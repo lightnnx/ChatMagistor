@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: archive-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: telegram_archive
+      POSTGRES_USER: archive
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-archive_dev_password}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U archive -d telegram_archive"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - archive-network
+
+  control-plane:
+    build: .
+    container_name: archive-control-plane
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - archive-network
+
+volumes:
+  postgres_data:
+
+networks:
+  archive-network:
+    driver: bridge
